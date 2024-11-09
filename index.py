@@ -1,8 +1,6 @@
 import paramiko
 import os
-import getpass
-from flask import Flask, send_file, abort
-from io import BytesIO  # Usamos BytesIO para enviar el archivo en memoria
+from flask import Flask, send_file, after_this_request
 from pathlib import Path
 
 app = Flask(__name__)
@@ -11,13 +9,23 @@ app = Flask(__name__)
 hostname = 'ssh-natureza.alwaysdata.net'
 port = 22
 username = 'natureza_anon'
-password = os.getenv('SSH_PASSWORD', '123456')  # Obtener la contraseña de una variable de entorno
+password = '(123456)'
+
+# Obtener la ruta de la carpeta "Descargas" de forma más general
+descargas_path = str(Path.home() / 'Downloads')  # Usamos Path.home() para obtener la ruta del directorio home
+
+# Si no existe la carpeta "Downloads", usar una ruta por defecto en el servidor
+if not os.path.exists(descargas_path):
+    descargas_path = '/tmp'  # Ruta alternativa en servidores tipo Linux
+
+# Ruta donde se guardará el archivo localmente en la carpeta "Descargas"
+archivo_local = os.path.join(descargas_path, 'JSalazar.xlsx')  # Guardar en "Descargas"
 
 # Ruta del archivo en el servidor remoto
-archivo_remoto = '72553563.xlsx'  # Asegúrate de que esta ruta sea correcta en el servidor
+archivo_remoto = 'JSalazar.xlsx'
 
 def descargar_archivo_remoto():
-    """Función que descarga el archivo desde el servidor remoto usando SFTP y lo devuelve en memoria."""
+    """Función para descargar el archivo desde el servidor SSH al equipo local"""
     try:
         # Crear el cliente SSH
         client = paramiko.SSHClient()
@@ -34,37 +42,31 @@ def descargar_archivo_remoto():
         # Crear el cliente SFTP para la transferencia de archivos
         sftp = client.open_sftp()
 
-        # Crear un objeto en memoria donde almacenaremos el archivo descargado
-        archivo_memoria = BytesIO()
-
-        # Descargar el archivo desde el servidor remoto directamente a memoria
-        sftp.getfo(archivo_remoto, archivo_memoria)
+        # Descargar el archivo desde el servidor remoto
+        sftp.get(archivo_remoto, archivo_local)
+        print(f'Archivo {archivo_remoto} descargado correctamente.')
 
         # Cerrar la conexión SFTP y SSH
         sftp.close()
         client.close()
-
-        # Volver al inicio del archivo en memoria para enviarlo
-        archivo_memoria.seek(0)
-
-        return archivo_memoria
-
     except Exception as e:
         print(f"Error al conectar o descargar el archivo: {e}")
-        return None
 
-@app.route('/descargar')
+@app.route('/api/descargar')
 def descargar():
-    """Ruta para descargar el archivo desde el servidor remoto y enviarlo al cliente."""
-    archivo_memoria = descargar_archivo_remoto()
+    """Ruta para manejar la descarga del archivo"""
+    # Solo intentamos descargar el archivo remoto una vez si no existe localmente
+    if not os.path.exists(archivo_local):
+        descargar_archivo_remoto()
 
-    if archivo_memoria:
-        # Retornar el archivo descargado directamente al navegador del cliente
-        return send_file(archivo_memoria, as_attachment=True, download_name='72553563.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    else:
-        # Si hubo un error al descargar el archivo
-        abort(404, description="Archivo no encontrado en el servidor remoto")
+    # Aseguramos que la respuesta no sea cacheada por el navegador
+    @after_this_request
+    def no_cache(response):
+        response.cache_control.no_store = True
+        return response
 
-if __name__ == '__main__':
-    # Iniciar el servidor HTTP en el puerto 5000
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Retornamos el archivo como adjunto para descarga
+    return send_file(archivo_local, as_attachment=True)
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
