@@ -12,10 +12,8 @@ port = 22
 username = 'natureza_anon'
 password = os.getenv('SSH_PASSWORD', '123456')  # Obtener la contraseña de una variable de entorno
 
-# Ruta donde se guardará el archivo localmente en el sistema Windows (Carpeta "Descargas")
-usuario = getpass.getuser()  # Obtiene el nombre del usuario actual de forma segura
-descargas = Path(f'C:/Users/{usuario}/Downloads')  # Ruta de la carpeta "Descargas"
-archivo_local = descargas / '72553563.xlsx'  # Ruta completa del archivo local en "Descargas"
+# Ruta donde se guardará el archivo en el entorno de Render (por ejemplo, /tmp)
+archivo_local = Path('/tmp/72553563.xlsx')  # Usamos /tmp para almacenamiento temporal en el contenedor
 
 # Ruta del archivo en el servidor remoto
 archivo_remoto = '72553563.xlsx'  # Asegúrate de que esta ruta sea correcta en el servidor
