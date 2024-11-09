@@ -1,5 +1,6 @@
 import paramiko
 import os
+import getpass
 from flask import Flask, send_file
 from pathlib import Path
 
@@ -9,10 +10,10 @@ app = Flask(__name__)
 hostname = 'ssh-natureza.alwaysdata.net'
 port = 22
 username = 'natureza_anon'
-password = '(123456)'
+password = os.getenv('SSH_PASSWORD', '123456')  # Obtener la contraseña de una variable de entorno
 
 # Ruta donde se guardará el archivo localmente en el sistema Windows (Carpeta "Descargas")
-usuario = os.getlogin()  # Obtiene el nombre del usuario actual
+usuario = getpass.getuser()  # Obtiene el nombre del usuario actual de forma segura
 descargas = Path(f'C:/Users/{usuario}/Downloads')  # Ruta de la carpeta "Descargas"
 archivo_local = descargas / '72553563.xlsx'  # Ruta completa del archivo local en "Descargas"
 
@@ -60,9 +61,13 @@ def descargar():
     # Descargar el archivo desde el servidor remoto
     descargar_archivo_remoto()
 
-    # Retornar el archivo descargado para que se pueda descargar via HTTP
-    return send_file(archivo_local, as_attachment=True)
+    # Verificar si el archivo ha sido descargado antes de intentar enviarlo
+    if archivo_local.exists():
+        # Retornar el archivo descargado para que se pueda descargar vía HTTP
+        return send_file(archivo_local, as_attachment=True)
+    else:
+        return f"Error: El archivo {archivo_local} no se encontró", 404
 
 if __name__ == '__main__':
     # Iniciar el servidor HTTP en el puerto 5000
-    app.run(debug=True, host='127.0.0.1', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5000)
