@@ -1,0 +1,68 @@
+import paramiko
+import os
+from flask import Flask, send_file
+from pathlib import Path
+
+app = Flask(__name__)
+
+# Configuración SSH
+hostname = 'ssh-natureza.alwaysdata.net'
+port = 22
+username = 'natureza_anon'
+password = '(123456)'
+
+# Ruta donde se guardará el archivo localmente en el sistema Windows (Carpeta "Descargas")
+usuario = os.getlogin()  # Obtiene el nombre del usuario actual
+descargas = Path(f'C:/Users/{usuario}/Downloads')  # Ruta de la carpeta "Descargas"
+archivo_local = descargas / '72553563.xlsx'  # Ruta completa del archivo local en "Descargas"
+
+# Ruta del archivo en el servidor remoto
+archivo_remoto = '72553563.xlsx'  # Asegúrate de que esta ruta sea correcta en el servidor
+
+def descargar_archivo_remoto():
+    """Función que descarga el archivo desde el servidor remoto usando SFTP."""
+    try:
+        # Crear el cliente SSH
+        client = paramiko.SSHClient()
+
+        # Cargar las claves del sistema
+        client.load_system_host_keys()
+
+        # Auto-aceptar claves de hosts desconocidos
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+        # Conectar al servidor SSH
+        client.connect(hostname, username=username, password=password, port=port)
+
+        # Crear el cliente SFTP para la transferencia de archivos
+        sftp = client.open_sftp()
+
+        # Descargar el archivo desde el servidor remoto
+        sftp.get(archivo_remoto, str(archivo_local))  # Usamos str() para convertir la ruta a string
+        print(f'Archivo {archivo_remoto} descargado correctamente en {archivo_local}')
+
+        # Cerrar la conexión SFTP y SSH
+        sftp.close()
+        client.close()
+
+        # Verifica si el archivo fue descargado correctamente
+        if archivo_local.exists():
+            print(f"El archivo fue descargado con éxito: {archivo_local}")
+        else:
+            print(f"El archivo no fue encontrado en la ruta {archivo_local}")
+
+    except Exception as e:
+        print(f"Error al conectar o descargar el archivo: {e}")
+
+@app.route('/descargar')
+def descargar():
+    """Ruta para descargar el archivo desde el servidor remoto y enviarlo al cliente."""
+    # Descargar el archivo desde el servidor remoto
+    descargar_archivo_remoto()
+
+    # Retornar el archivo descargado para que se pueda descargar via HTTP
+    return send_file(archivo_local, as_attachment=True)
+
+if __name__ == '__main__':
+    # Iniciar el servidor HTTP en el puerto 5000
+    app.run(debug=True, host='127.0.0.1', port=5000)
