@@ -19,10 +19,10 @@ if not os.path.exists(descargas_path):
     descargas_path = '/tmp'  # Ruta alternativa en servidores tipo Linux
 
 # Ruta donde se guardará el archivo localmente en la carpeta "Descargas"
-archivo_local = os.path.join(descargas_path, 'JSalazar.xlsx')  # Guardar en "Descargas"
+archivo_local = os.path.join(descargas_path, '72553563.xlsx')  # Guardar en "Descargas"
 
 # Ruta del archivo en el servidor remoto
-archivo_remoto = 'JSalazar.xlsx'
+archivo_remoto = '72553563.xlsx'
 
 def descargar_archivo_remoto():
     """Función para descargar el archivo desde el servidor SSH al equipo local"""
